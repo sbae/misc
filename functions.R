@@ -44,6 +44,7 @@ preproc <- function(df, n.levels=10, na.values=c(-1,-9)) {
 
 
 ## Plot the object derived from tune.rsfrc
+library(akima)
 plot.tune <- function(o, linear = TRUE) {
 	x <- o$results[,1]
 	y <- o$results[,2]
