@@ -1,3 +1,6 @@
+library(readr)
+
+
 ## CKID specific: load & preprocess datasets
 read_ckid <- function(cdbname, filename=NULL, ver = '/common', keep = NA, drop = NA) {
     keep <- tolower(keep)
