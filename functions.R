@@ -5,26 +5,35 @@ library(readr)
 read_ckid <- function(cdbname, filename=NULL, ver = '/common', keep = NA, drop = NA) {
     keep <- tolower(keep)
     drop <- tolower(drop)
-      cdbloc <- paste0('../data/codebook', ver, '/', cdbname, '.ndx')
-      if (is.null(filename)) filename <- cdbname
-      dataloc <- paste0('../data/data', ver,'/', filename, '.data')
-      skip <- grep('----------', readLines(cdbloc))
-      line_name <-
-        read_table(cdbloc, col_names = FALSE, skip = skip) %>%
-        select(X2, X5)
-      outfile <-
-        as.data.frame(read_fwf(dataloc, fwf_widths(line_name$X2, tolower(line_name$X5)),
-                               na = ".") %>% select_if(function(x){!all(is.na(x))}))
-      outfile <- na_if(outfile, '.')
-      if (!is.na(keep)) {
-        outfile <- outfile[, keep]
-      } else if (!is.na(drop)) {
-        outfile <- as.data.frame(outfile %>% select(-drop))
-      } else {
-        outfile <- outfile
-      }
-      return(outfile)
+
+    cdbloc <- paste0('../data/codebook', ver, '/', cdbname, '.ndx')
+    if (is.null(filename)) filename <- cdbname
+    dataloc <- paste0('../data/data', ver,'/', filename, '.data')
+    skip <- grep('----------', readLines(cdbloc))
+
+    line_name <-
+    read_table(cdbloc, col_names = FALSE, skip = skip) %>%
+    select(X1, X2, X5)
+
+    outfile <-
+    as.data.frame(
+        read_fwf(dataloc, 
+            fwf_widths(c(diff(line_name$X1), line_name$X2[length(line_name$X2)]), tolower(line_name$X5)),
+            guess_max=1e6, na = ".") 
+        %>% select_if(function(x){!all(is.na(x))}))
+	
+    outfile <- na_if(outfile, '.')
+	
+    if (!is.na(keep)) {
+ 	   outfile <- outfile[, keep]
+    } else if (!is.na(drop)) {
+ 	   outfile <- as.data.frame(outfile %>% select(-drop))
+    } else {
+  	  outfile <- outfile
+    }
+    return(outfile)
   }
+
 
 preproc <- function(df, n.levels=10, na.values=c(-1,-9)) {
 		summary(df)
