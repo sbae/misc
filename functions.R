@@ -35,7 +35,7 @@ read_ckid <- function(cdbname, filename=NULL, ver = '/common', keep = NA, drop =
   }
 
 
-preproc <- function(df, n.levels=10, na.values=c(-1,-9)) {
+preproc <- function(df, n.levels=10, na.values=c(-1,-9), no_factor=NULL) {
 		summary(df)
 
 		# Convert na.values to NA
@@ -47,12 +47,18 @@ preproc <- function(df, n.levels=10, na.values=c(-1,-9)) {
 
 		# define factors
 		tgt <- sapply(df, function(x) length(unique(x))<n.levels)
+		tgt[names(df) %in% no_factor] <- FALSE
 		df[tgt] <- lapply(df[tgt], factor)
 		print(names(df[tgt]))
 		return(df)
 }
 
 
+decimal_date <- function(timestring, format="%m/%d/%Y"){
+  round(
+    (strptime(timestring, format=format)$year+1900) + (strptime(timestring, format=format)$yday/365),
+    3)
+}
 
 
 ## Plot the object derived from tune.rsfrc
