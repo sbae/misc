@@ -55,9 +55,10 @@ preproc <- function(df, n.levels=10, na.values=c(-1,-9), no_factor=NULL) {
 
 
 decimal_date <- function(timestring, format="%m/%d/%Y"){
-  round(
-    (strptime(timestring, format=format)$year+1900) + (strptime(timestring, format=format)$yday/365),
-    3)
+    y <- (strptime(timestring, format=format)$year+1900)
+    days_in_the_year <- strptime(paste0("12/31/",y), format=format)$yday+1
+    yday <- (strptime(timestring, format=format)$yday/days_in_the_year)
+    round(y + yday, 3)
 }
 
 
