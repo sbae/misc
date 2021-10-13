@@ -87,3 +87,16 @@ plot.tune <- function(o, linear = TRUE) {
 	points(x,y,pch=16,cex=.25)})
 }
 
+
+## Wrapper for xgb.cv
+xgb_cv_wrap <- function(x, data, nfold=5) {
+  cv <- xgb.cv(
+          params = x,
+          data = data,
+          nrounds = 2000,
+          early_stopping_rounds = 50,
+          print_every_n = 50, nfold = nfold)
+  out <- data.frame(x, eval=as.numeric(cv$evaluation_log[cv$best_iteration,4]), best_iter=cv$best_iteration)
+  return(out)
+}
+
