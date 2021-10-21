@@ -54,6 +54,15 @@ preproc <- function(df, n.levels=10, na.values=c(-1,-9), no_factor=NULL) {
 }
 
 
+## KIDMAC style conversion
+ymd_to_decimal <- function(timestring){
+    as.numeric(round((as.Date(timestring) - as.Date("1960-1-1"))/365.25+1960, 3))
+}
+decimal_to_ymd <- function(input){
+    as.Date(round((input-1960)*365.25), origin='1960-1-1')
+}
+			      
+## Alt way. Perhaps a bit more robust?
 decimal_date <- function(timestring, format="%m/%d/%Y"){
     y <- (strptime(timestring, format=format)$year+1900)
     days_in_the_year <- strptime(paste0("12/31/",y), format=format)$yday+1
