@@ -123,8 +123,8 @@ lincom <- function(model, varnum, ci.level=0.95){
     list(
       coef = sum(coef(model)[varnum]), 
       se = sqrt(out_var),
-      lci = sum(coef(model)[varnum]) + qnorm((1-ci.level)/2),
-      uci = sum(coef(model)[varnum]) + qnorm((1+ci.level)/2)
+      lci = sum(coef(model)[varnum]) + qnorm((1-ci.level)/2)*sqrt(out_var),
+      uci = sum(coef(model)[varnum]) + qnorm((1+ci.level)/2)*sqrt(out_var)
     )
   )
 }
