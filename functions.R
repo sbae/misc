@@ -109,3 +109,23 @@ xgb_cv_wrap <- function(x, data, nfold=5) {
   return(out)
 }
 
+			      
+
+### Just like stata's lincom
+lincom <- function(model, varnum, ci.level=0.95){
+  out_var <- 0
+  for(i in varnum){
+    for(j in varnum){
+      out_var <- out_var + vcov(model)[i,j]
+    }
+  }
+  return(
+    list(
+      coef = sum(coef(model)[varnum]), 
+      se = sqrt(out_var),
+      lci = sum(coef(model)[varnum]) + qnorm((1-ci.level)/2),
+      uci = sum(coef(model)[varnum]) + qnorm((1+ci.level)/2)
+    )
+  )
+}
+			      
