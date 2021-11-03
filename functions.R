@@ -119,13 +119,16 @@ lincom <- function(model, varnum, ci.level=0.95){
       out_var <- out_var + vcov(model)[i,j]
     }
   }
+  z <- sum(coef(model)[varnum])/sqrt(out_var)
   return(
-    list(
+    c(
       coef = sum(coef(model)[varnum]), 
       se = sqrt(out_var),
       lci = sum(coef(model)[varnum]) + qnorm((1-ci.level)/2)*sqrt(out_var),
-      uci = sum(coef(model)[varnum]) + qnorm((1+ci.level)/2)*sqrt(out_var)
+      uci = sum(coef(model)[varnum]) + qnorm((1+ci.level)/2)*sqrt(out_var),
+      z = z,
+      p = pnorm(-abs(z))*2
     )
   )
 }
-			      
+		      
