@@ -131,4 +131,24 @@ lincom <- function(model, varnum, ci.level=0.95){
     )
   )
 }
+			      
+			      
+## Estimate urine Albu-Protein ratio (Ref: Schneider AJKD 2021. https://pubmed.ncbi.nlm.nih.gov/32898620/)
+calc_apr <- function(upcr, g, age){   ## upcr takes mg/g. CKiD default is g/g. May need to multiply by 1000.
+    ifelse(g==TRUE,
+        ## G
+        ifelse(upcr>=1000,
+            0.724,      # G, upcr>=1000
+            1/(1 + 0.382*(upcr/1000)^-0.579)),      # G, upcr<1000
+        
+        ## NG
+        ifelse(upcr>=1000,
+            1/(1 + 0.642*0.906^((age-15)*(age<15))),      # NG, upcr>=1000
+            ifelse(upcr>=100,
+                1/(1 + 0.642*(upcr/1000)^(-0.720)*0.906^((age-15)*(age<15))),     ## NG, 100<=upcr<1000
+                1/(1+ 3.369*0.906^((age-15)*(age<15)))         ## NG, upcr<100
+            )
+        )
+    )
+}			      
 		      
