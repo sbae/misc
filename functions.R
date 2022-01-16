@@ -112,20 +112,32 @@ xgb_cv_wrap <- function(x, data, nfold=5) {
 			      
 
 ### Just like stata's lincom
-lincom <- function(model, varnum, ci.level=0.95){
+lincom <- function(model, varnum, multiplier=NULL, ci.level=0.95){
+  
+  # If multiplier is NULL, assume all are +1
+  if(is.null(multiplier)) multiplier = rep(1, length(varnum))
+
+  # get the lincom variance via a bilinear sum  
   out_var <- 0
   for(i in varnum){
     for(j in varnum){
-      out_var <- out_var + vcov(model)[i,j]
+      out_var <- out_var + vcov(model)[i,j]*multiplier[match(i, varnum)]*multiplier[match(j, varnum)]
     }
   }
-  z <- sum(coef(model)[varnum])/sqrt(out_var)
+
+  # calculate the lincom coef
+  coef <- sum(coef(model)[varnum] * multiplier)
+
+  # calculate Z
+  z <- coef/sqrt(out_var)
+
+  # Prepare output
   return(
     c(
-      coef = sum(coef(model)[varnum]), 
+      coef = coef, 
       se = sqrt(out_var),
-      lci = sum(coef(model)[varnum]) + qnorm((1-ci.level)/2)*sqrt(out_var),
-      uci = sum(coef(model)[varnum]) + qnorm((1+ci.level)/2)*sqrt(out_var),
+      lci = coef + qnorm((1-ci.level)/2)*sqrt(out_var),
+      uci = coef + qnorm((1+ci.level)/2)*sqrt(out_var),
       z = z,
       p = pnorm(-abs(z))*2
     )
