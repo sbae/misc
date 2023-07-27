@@ -1,40 +1,5 @@
-library(readr)
 
-
-## CKID specific: load & preprocess datasets
-read_ckid <- function(cdbname, filename=NULL, ver = '/common', keep = NA, drop = NA) {
-    keep <- tolower(keep)
-    drop <- tolower(drop)
-
-    cdbloc <- paste0('../data/codebook', ver, '/', cdbname, '.ndx')
-    if (is.null(filename)) filename <- cdbname
-    dataloc <- paste0('../data/data', ver,'/', filename, '.data')
-    skip <- grep('----------', readLines(cdbloc))
-
-    line_name <-
-    read_table(cdbloc, col_names = FALSE, skip = skip) %>%
-    select(X1, X2, X5)
-
-    outfile <-
-    as.data.frame(
-        read_fwf(dataloc, 
-            fwf_widths(c(diff(line_name$X1), line_name$X2[length(line_name$X2)]), tolower(line_name$X5)),
-            guess_max=1e6, na = ".") 
-        %>% select_if(function(x){!all(is.na(x))}))
-	
-    outfile <- na_if(outfile, '.')
-	
-    if (!is.na(keep)) {
- 	   outfile <- outfile[, keep]
-    } else if (!is.na(drop)) {
- 	   outfile <- as.data.frame(outfile %>% select(-drop))
-    } else {
-  	  outfile <- outfile
-    }
-    return(outfile)
-  }
-
-
+## Automatically convert numeric variables to factors based on the number of unique values
 preproc <- function(df, n.levels=10, na.values=c(-1,-9), no_factor=NULL) {
 		summary(df)
 
@@ -53,23 +18,7 @@ preproc <- function(df, n.levels=10, na.values=c(-1,-9), no_factor=NULL) {
 		return(df)
 }
 
-
-## KIDMAC style conversion
-ymd_to_decimal <- function(timestring){
-    as.numeric(round((as.Date(timestring) - as.Date("1960-1-1"))/365.25+1960, 3))
-}
-decimal_to_ymd <- function(input){
-    as.Date(round((input-1960)*365.25), origin='1960-1-1')
-}
-			      
-## Alt way. Perhaps a bit more robust?
-decimal_date <- function(timestring, format="%m/%d/%Y"){
-    y <- (strptime(timestring, format=format)$year+1900)
-    days_in_the_year <- strptime(paste0("12/31/",y), format=format)$yday+1
-    yday <- (strptime(timestring, format=format)$yday/days_in_the_year)
-    round(y + yday, 3)
-}
-
+		      
 
 ## Plot the object derived from tune.rsfrc
 library(akima)
@@ -144,23 +93,35 @@ lincom <- function(model, varnum, multiplier=NULL, ci.level=0.95){
   )
 }
 			      
-			      
-## Estimate urine Albu-Protein ratio (Ref: Schneider AJKD 2021. https://pubmed.ncbi.nlm.nih.gov/32898620/)
-calc_apr <- function(upcr, g, age){   ## upcr takes mg/g. CKiD default is g/g. May need to multiply by 1000.
-    ifelse(g==TRUE,
-        ## G
-        ifelse(upcr>=1000,
-            0.724,      # G, upcr>=1000
-            1/(1 + 0.382*(upcr/1000)^-0.579)),      # G, upcr<1000
-        
-        ## NG
-        ifelse(upcr>=1000,
-            1/(1 + 0.642*0.906^((age-15)*(age<15))),      # NG, upcr>=1000
-            ifelse(upcr>=100,
-                1/(1 + 0.642*(upcr/1000)^(-0.720)*0.906^((age-15)*(age<15))),     ## NG, 100<=upcr<1000
-                1/(1+ 3.369*0.906^((age-15)*(age<15)))         ## NG, upcr<100
-            )
-        )
+
+## Van Calster calibration curves -- my implementation
+calicurve <- function(pred, obs, graph = TRUE) {
+    m0 <- glm(obs ~ 0 + offset(qlogis(pred)), family = binomial)
+    m1 <- glm(obs ~ offset(qlogis(pred)), family = binomial)
+    m2 <- glm(obs ~ qlogis(pred), family = binomial)
+
+    p <- c(
+        1 - pchisq(m0$deviance - m2$deviance, 2),
+        1 - pchisq(m0$deviance - m1$deviance, 1),
+        1 - pchisq(m1$deviance - m2$deviance, 1)
     )
-}			      
-		      
+    names(p) <- c("H0_1", "H0_2", "H0_3")
+    print(p)
+
+    if (graph != FALSE) {
+        m3 <- predict(loess(obs ~ pred), se = T)
+        plot(NULL, xlim = 0:1, ylim = 0:1, asp = 1, xlab = "Predicted Probability", ylab = "Observed Proportion")
+        polygon(c(sort(pred), rev(sort(pred))),
+            c(
+                (m3$fit - qt(0.975, m3$df) * m3$se)[order(eval(pred))],
+                (m3$fit + qt(0.975, m3$df) * m3$se)[rev(order(eval(pred)))]
+            ),
+            border = NA, col = "grey90"
+        )
+        lines(sort(pred), m3$fit[order(pred)], lwd = 3, xlim = 0:1)
+        abline(0, 1, xlim = 0:1, col = "grey50")
+    }
+
+    return(list(models = list(model0 = m0, model1 = m1, model2 = m2), p = p))
+}
+
