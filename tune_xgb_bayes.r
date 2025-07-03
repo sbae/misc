@@ -23,12 +23,13 @@ require(rBayesianOptimization)
 #'
 #' @return A list containing the best score and the best set of hyperparameters found.
 #'
-tune_xgb_bayes <- function(data, label, param_bounds, nfold = 5,
+tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
                                init_points = 5, n_iter = 15,
                                objective = "binary:logistic",
                                eval_metric = "auc",
                                subsample = 0.1,
                                seed = 256,
+                               verbose = TRUE,
                                maximize = NULL) {
   set.seed(seed)  # Set seed for reproducibility
 
@@ -89,8 +90,8 @@ tune_xgb_bayes <- function(data, label, param_bounds, nfold = 5,
       data = dtrain,
       nfold = nfold,
       nrounds = floor(nrounds),
-      verbose = FALSE,
-      early_stopping_rounds = 10
+      verbose = verbose,
+      early_stopping_rounds = 20
     )
 
     # Extract the best score from the evaluation log
@@ -109,6 +110,18 @@ tune_xgb_bayes <- function(data, label, param_bounds, nfold = 5,
     )
   }
 
+
+  ## Default param bounds
+  if is.null(param_bounds){
+    param_bounds <- list(
+      max_depth = c(2L, 15L), # Smaller max_depth for this simpler dataset
+      eta = c(0.001, 0.3),
+      subsample = c(0.6, 1.0),
+      colsample_bytree = c(0.6, 1.0),
+      gamma = c(0, 1)
+    )
+  }
+  
   # --- 4. Run Bayesian Optimization ---
   cat("--- Starting Bayesian Optimization ---\n")
   optimizer <- BayesianOptimization(
@@ -117,7 +130,7 @@ tune_xgb_bayes <- function(data, label, param_bounds, nfold = 5,
     init_points = init_points,
     n_iter = n_iter,
     acq = "ucb",
-    verbose = TRUE
+    verbose = verbose
   )
 
   # --- 5. Format and return the results ---
