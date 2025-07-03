@@ -112,7 +112,7 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
 
 
   ## Default param bounds
-  if is.null(param_bounds){
+  if (is.null(param_bounds)){
     param_bounds <- list(
       max_depth = c(2L, 15L), # Smaller max_depth for this simpler dataset
       eta = c(0.001, 0.3),
