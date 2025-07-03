@@ -1,9 +1,6 @@
 # Load necessary libraries
-library(xgboost)
-library(rBayesianOptimization)
-
-# Set a seed for reproducibility
-set.seed(999)
+require(xgboost)
+require(rBayesianOptimization)
 
 #' @title Tune XGBoost Hyperparameters with Bayesian Optimization
 #'
