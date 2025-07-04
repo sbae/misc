@@ -72,7 +72,7 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
   dtrain <- xgb.DMatrix(data = data_sub, label = label_sub)
 
   # --- 3. Define the Objective Function for Bayesian Optimization ---
-  xgb_cv_bayes <- function(max_depth, eta, subsample, colsample_bytree, nrounds, gamma) {
+  xgb_cv_bayes <- function(max_depth, eta, subsample, colsample_bytree, max_nrounds=1000, gamma) {
 
     params <- list(
       objective = objective,
@@ -89,7 +89,7 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
       params = params,
       data = dtrain,
       nfold = nfold,
-      nrounds = floor(nrounds),
+      nrounds = floor(max_nrounds),
       verbose = verbose,
       early_stopping_rounds = 20
     )
