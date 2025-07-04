@@ -137,8 +137,8 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
   cat("\n--- Optimization Finished ---\n")
   
   best_params <- as.list(optimizer$Best_Par)
-  best_params$max_depth <- floor(best_params$max_depth)
-  best_params$nrounds <- floor(best_params$nrounds)
+  print(best_params)
+  # best_params$max_depth <- floor(best_params$max_depth)
 
   # Return the true best score (not the potentially negative one fed to the optimizer)
   actual_best_score <- if (maximize) optimizer$Best_Value else -optimizer$Best_Value
