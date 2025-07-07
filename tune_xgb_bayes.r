@@ -15,7 +15,7 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, n_fold = 5,
                                eval_metric = "logloss",
                                subsample = 0.1,
                                seed = 256,
-                               max_nrounds = 2000,
+                               max_nrounds = 2500,
                                maximize = NULL) {
   set.seed(seed)  # Set seed for reproducibility
 
@@ -102,11 +102,11 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, n_fold = 5,
   ## Default param bounds
   if (is.null(param_bounds)){
     param_bounds <- list(
-      max_depth = c(2L, 15L), # Smaller max_depth for this simpler dataset
-      eta = c(0.001, 0.3),
-      subsample = c(0.6, 1.0),
+      max_depth = c(2L, 20L), # Smaller max_depth for this simpler dataset
+      eta = c(0.001, 0.4),
+      subsample = c(0.5, 1.0),
       colsample_bytree = c(0.6, 1.0),
-      gamma = c(0, 1)
+      gamma = c(0, 5)
     )
   }
   
@@ -128,7 +128,9 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, n_fold = 5,
   # Print a warning if any of the best_params are right at the edge of the bounds
   for (param in names(optimizer$bounds)) {
     if (best_params[[param]] == optimizer$bounds[[param]][1] || best_params[[param]] == optimizer$bounds[[param]][2]) {
-      warning(sprintf("Best parameter '%s' is at the edge of its bounds: %s", param, best_params[[param]]))
+      if (!(param == 'gamma' && best_params[[param]] == 0)){            # gamma=0 is not a bad thing
+        warning(sprintf("Best parameter '%s' is at the edge of its bounds: %s", param, best_params[[param]]))
+      }
     }
   }
   if (best_params$nround == max_nrounds){
