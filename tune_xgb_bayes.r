@@ -94,7 +94,7 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, n_fold = 5,
 
     list(
       Score = score_for_optimizer,
-      nround = best_round
+      nrounds = best_round
     )
   }
 
@@ -122,7 +122,7 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, n_fold = 5,
   # --- 5. Format and return the results ---
   cat("\n--- Optimization Finished ---\n")  
   best_result <- as.list(head(optimizer$scoreSummary[order(-get("Score"))],1))
-  best_params <- best_result[c(names(optimizer$bounds), "nround")]
+  best_params <- best_result[c(names(optimizer$bounds), "nrounds")]
   print(data.frame(best_result))
 
   # Print a warning if any of the best_params are right at the edge of the bounds
@@ -135,7 +135,7 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, n_fold = 5,
       }
     }
   }
-  if (best_params$nround == max_nrounds){
+  if (best_params$nrounds == max_nrounds){
     warning("Best nrounds is at the maximum value. Consider increasing max_nrounds in the parameter bounds.")
   }
 
