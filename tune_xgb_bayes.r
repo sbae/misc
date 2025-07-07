@@ -1,6 +1,6 @@
 # Load necessary libraries
 require(xgboost)
-require(rBayesianOptimization)
+require(ParBayesianOptimization)
 
 #' @title Tune XGBoost Hyperparameters with Bayesian Optimization
 #'
@@ -8,28 +8,14 @@ require(rBayesianOptimization)
 #' Performs hyperparameter tuning for an XGBoost model using Bayesian Optimization
 #' and k-fold cross-validation. Handles both maximization and minimization of metrics.
 #'
-#' @param data A numeric matrix or data frame of features.
-#' @param label A numeric vector of target labels.
-#' @param param_bounds A named list defining the search space for hyperparameters.
-#'        Each element should be a numeric vector of length 2: c(min, max).
-#' @param nfold Integer. The number of folds for cross-validation.
-#' @param init_points Integer. The number of random exploration steps for Bayesian Optimization.
-#' @param n_iter Integer. The number of Bayesian optimization iterations.
-#' @param objective Character. The learning objective for XGBoost (e.g., "binary:logistic").
-#' @param eval_metric Character. The evaluation metric to optimize (e.g., "auc", "logloss", "rmse").
-#' @param maximize Logical. If TRUE, the metric is maximized. If FALSE, it is minimized.
-#'        If NULL (default), the function will infer the direction. Metrics in
-#'        `c("auc", "aucpr", "ndcg", "map")` will be maximized; all others will be minimized.
-#'
-#' @return A list containing the best score and the best set of hyperparameters found.
-#'
-tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
-                               init_points = 5, n_iter = 15,
+
+tune_xgb_bayes <- function(data, label, param_bounds = NULL, n_fold = 5,
+                               init_points = 10, iters_n = 5,
                                objective = "binary:logistic",
-                               eval_metric = "auc",
+                               eval_metric = "logloss",
                                subsample = 0.1,
                                seed = 256,
-                               verbose = TRUE,
+                               max_nrounds = 2000,
                                maximize = NULL) {
   set.seed(seed)  # Set seed for reproducibility
 
@@ -53,6 +39,7 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
     label_sub <- label
   } else {
     subsample_n <- floor(subsample*nrow(data))
+    cat(sprintf("Subsample size: %d (%.2f%% of total data)\n", subsample_n, 100 * subsample))
 
     # If samsumple will give a sample size below 100, display a warning.
     if (is.numeric(subsample) && subsample_n < 100) {
@@ -72,9 +59,9 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
   dtrain <- xgb.DMatrix(data = data_sub, label = label_sub)
 
   # --- 3. Define the Objective Function for Bayesian Optimization ---
-  xgb_cv_bayes <- function(max_depth, eta, subsample, colsample_bytree, max_nrounds=1000, gamma) {
+  xgb_cv_bayes <- function(max_depth, eta, subsample, colsample_bytree, max.nrounds = max_nrounds, gamma) {
 
-    params <- list(
+    default_params <- list(
       objective = objective,
       eval_metric = eval_metric,
       booster = "gbtree",
@@ -86,19 +73,20 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
     )
 
     cv_result <- xgb.cv(
-      params = params,
+      params = default_params,
       data = dtrain,
-      nfold = nfold,
-      nrounds = floor(max_nrounds),
-      verbose = verbose,
+      nfold = n_fold,
+      nrounds = floor(max.nrounds),
       early_stopping_rounds = 20
     )
 
     # Extract the best score from the evaluation log
     if (maximize) {
         best_score <- max(cv_result$evaluation_log[[paste0("test_", eval_metric, "_mean")]])
+        best_round <- which.max(cv_result$evaluation_log[[paste0("test_", eval_metric, "_mean")]])
     } else {
         best_score <- min(cv_result$evaluation_log[[paste0("test_", eval_metric, "_mean")]])
+        best_round <- which.min(cv_result$evaluation_log[[paste0("test_", eval_metric, "_mean")]])
     }
     
     # The optimizer always maximizes. If we want to minimize a metric, we return its negative value.
@@ -106,7 +94,7 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
 
     list(
       Score = score_for_optimizer,
-      Pred = NA # Not used, but required by the package
+      nround = best_round
     )
   }
 
@@ -124,24 +112,31 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
   
   # --- 4. Run Bayesian Optimization ---
   cat("--- Starting Bayesian Optimization ---\n")
-  optimizer <- BayesianOptimization(
+  optimizer <- bayesOpt(
     FUN = xgb_cv_bayes,
     bounds = param_bounds,
-    init_points = init_points,
-    n_iter = n_iter,
-    acq = "ucb",
-    verbose = verbose
+    initPoints = init_points,
+    iters.n = iters_n
   )
 
   # --- 5. Format and return the results ---
-  cat("\n--- Optimization Finished ---\n")
-  
-  best_params <- as.list(optimizer$Best_Par)
-  print(best_params)
-  # best_params$max_depth <- floor(best_params$max_depth)
+  cat("\n--- Optimization Finished ---\n")  
+  best_result <- as.list(head(optimizer$scoreSummary[order(-get("Score"))],1))
+  best_params <- best_result[c(names(optimizer$bounds), "nround")]
+  print(data.frame(best_result))
+
+  # Print a warning if any of the best_params are right at the edge of the bounds
+  for (param in names(optimizer$bounds)) {
+    if (best_params[[param]] == optimizer$bounds[[param]][1] || best_params[[param]] == optimizer$bounds[[param]][2]) {
+      warning(sprintf("Best parameter '%s' is at the edge of its bounds: %s", param, best_params[[param]]))
+    }
+  }
+  if (best_params$nround == max_nrounds){
+    warning("Best nrounds is at the maximum value. Consider increasing max_nrounds in the parameter bounds.")
+  }
 
   # Return the true best score (not the potentially negative one fed to the optimizer)
-  actual_best_score <- if (maximize) optimizer$Best_Value else -optimizer$Best_Value
+  actual_best_score <- if (maximize) best_result$Score else -best_result$Score
 
   result <- list(
     best_score = actual_best_score,
@@ -157,13 +152,13 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
 # # 1. Load data from the xgboost package
 # # The 'agaricus' dataset is a classic binary classification problem.
 # data(agaricus.train, package = "xgboost")
-# data(agaricus.test, package = "xgboost") # We'll just use the training set for tuning
+# # We'll just use the training set for tuning
 
 # # Separate features and labels from the loaded list
 # features <- agaricus.train$data # This is a sparse matrix (dgCMatrix)
 # labels <- agaricus.train$label
 
-# # 2. Define search space
+# # 2. Define search space (optional)
 # param_bounds_r <- list(
 #   max_depth = c(2L, 8L), # Smaller max_depth for this simpler dataset
 #   eta = c(0.01, 0.3),
@@ -178,10 +173,8 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
 # tuning_results_auc <- tune_xgb_bayes(
 #   data = features,
 #   label = labels,
-#   param_bounds = param_bounds_r,
-#   nfold = 5,
-#   init_points = 5,
-#   n_iter = 10, # Reduced iterations for a quicker demo
+#   init_points = 6,
+#   iters_n = 2, # Reduced iterations for a quicker demo
 #   eval_metric = "auc"
 # )
 # cat(sprintf("\nBest AUC found: %.4f\n", tuning_results_auc$best_score))
@@ -193,10 +186,8 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
 # tuning_results_logloss <- tune_xgb_bayes(
 #   data = features,
 #   label = labels,
-#   param_bounds = param_bounds_r,
-#   nfold = 5,
-#   init_points = 5,
-#   n_iter = 10,
+#   init_points = 6,
+#   iters_n = 2, # Reduced iterations for a quicker demo
 #   eval_metric = "logloss"
 # )
 # cat(sprintf("\nBest (minimum) LogLoss found: %.4f\n", tuning_results_logloss$best_score))
@@ -214,9 +205,8 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, nfold = 5,
 #   data = reg_features,
 #   label = reg_labels,
 #   param_bounds = param_bounds_r,
-#   nfold = 5,
-#   init_points = 5,
-#   n_iter = 10,
+#   init_points = 6,
+#   iters_n = 2, # Reduced iterations for a quicker demo
 #   objective = "reg:squarederror", # Change objective for regression
 #   eval_metric = "rmse"            # Change metric for regression
 # )
