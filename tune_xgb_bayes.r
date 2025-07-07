@@ -128,7 +128,9 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, n_fold = 5,
   # Print a warning if any of the best_params are right at the edge of the bounds
   for (param in names(optimizer$bounds)) {
     if (best_params[[param]] == optimizer$bounds[[param]][1] || best_params[[param]] == optimizer$bounds[[param]][2]) {
-      if (!(param == 'gamma' && best_params[[param]] == 0)){            # gamma=0 is not a bad thing
+      if (!(param == 'gamma' && best_params[[param]] == 0) && # gamma=0 is not a bad thing
+          !(param == 'subsample' && best_params[[param]] == 1.0) && # subsample=1 is not a bad thing
+          !(param == 'colsample_bytree' && best_params[[param]] == 1.0)) {           # colsample_bytree=1 is not a bad thing
         warning(sprintf("Best parameter '%s' is at the edge of its bounds: %s", param, best_params[[param]]))
       }
     }
