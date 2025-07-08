@@ -82,11 +82,11 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, n_fold = 5,
 
     # Extract the best score from the evaluation log
     if (maximize) {
-        best_score <- max(cv_result$evaluation_log[[paste0("test_", eval_metric, "_mean")]])
-        best_round <- which.max(cv_result$evaluation_log[[paste0("test_", eval_metric, "_mean")]])
+        best_score <- max(cv_result$evaluation_log[[paste0("test_", gsub("-", "_", eval_metric), "_mean")]])  # cox-nloglik needs to be changed to cox_nloglik
+        best_round <- which.max(cv_result$evaluation_log[[paste0("test_", gsub("-", "_", eval_metric), "_mean")]])
     } else {
-        best_score <- min(cv_result$evaluation_log[[paste0("test_", eval_metric, "_mean")]])
-        best_round <- which.min(cv_result$evaluation_log[[paste0("test_", eval_metric, "_mean")]])
+        best_score <- min(cv_result$evaluation_log[[paste0("test_", gsub("-", "_", eval_metric), "_mean")]])
+        best_round <- which.min(cv_result$evaluation_log[[paste0("test_", gsub("-", "_", eval_metric), "_mean")]])
     }
     
     # The optimizer always maximizes. If we want to minimize a metric, we return its negative value.
