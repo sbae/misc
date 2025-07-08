@@ -99,27 +99,42 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, n_fold = 5,
   }
 
 
-  ## Default param bounds
-  if (is.null(param_bounds)){
-    param_bounds <- list(
-      max_depth = c(2L, 20L), # Smaller max_depth for this simpler dataset
-      eta = c(0.001, 0.4),
-      subsample = c(0.5, 1.0),
-      colsample_bytree = c(0.6, 1.0),
-      gamma = c(0, 5)
-    )
+  # --- 4. Define Hyperparameter Search Space ---
+  # Define default parameter bounds
+  default_bounds <- list(
+    max_depth = c(2L, 20L),
+    eta = c(0.001, 0.4),
+    subsample = c(0.5, 1.0),
+    colsample_bytree = c(0.6, 1.0),
+    gamma = c(0, 5)
+  )
+
+  # Merge user-provided bounds with defaults. This allows overriding specific ranges.
+  final_bounds <- default_bounds
+  if (!is.null(param_bounds)) {
+    # Warn about any user-provided parameter names that are not in the defaults
+    unknown_params <- setdiff(names(param_bounds), names(default_bounds))
+    if (length(unknown_params) > 0) {
+      warning(sprintf("Ignoring unknown parameter(s) in param_bounds: %s",
+                      paste(unknown_params, collapse = ", ")))
+    }
+
+    # Overwrite defaults with user-provided bounds for known parameters
+    for (param in names(intersect(names(param_bounds), names(default_bounds)))) {
+      final_bounds[[param]] <- param_bounds[[param]]
+    }
   }
   
-  # --- 4. Run Bayesian Optimization ---
+  # --- 5. Run Bayesian Optimization ---
   cat("--- Starting Bayesian Optimization ---\n")
   optimizer <- bayesOpt(
     FUN = xgb_cv_bayes,
-    bounds = param_bounds,
+    bounds = final_bounds,
     initPoints = init_points,
     iters.n = iters_n
   )
 
-  # --- 5. Format and return the results ---
+  # --- 6. Format and return the results ---
   cat("\n--- Optimization Finished ---\n")  
   best_result <- as.list(head(optimizer$scoreSummary[order(-get("Score"))],1))
   best_params <- best_result[c(names(optimizer$bounds), "nrounds")]
