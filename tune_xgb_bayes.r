@@ -122,9 +122,11 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, n_fold = 5,
     # Overwrite defaults with user-provided bounds for known parameters
     for (param in names(intersect(names(param_bounds), names(default_bounds)))) {
       final_bounds[[param]] <- param_bounds[[param]]
+      cat("param_bounds [", param, "] updated with ", param_bounds[[param]])
     }
   }
-  
+
+  print(final_bounds)
   # --- 5. Run Bayesian Optimization ---
   cat("--- Starting Bayesian Optimization ---\n")
   optimizer <- bayesOpt(
