@@ -127,7 +127,7 @@ tune_xgb_bayes <- function(data, label, param_bounds = NULL, n_fold = 5,
     }
   }
   cat("--- Parameter bounds ---\n")
-  cat(final_bounds, "\n")
+  print(final_bounds)
   
   # --- 5. Run Bayesian Optimization ---
   cat("--- Starting Bayesian Optimization ---\n")
